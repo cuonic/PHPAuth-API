@@ -156,4 +156,46 @@ Flight::route('POST /delete', function() {
     }
 });
 
+Flight::route('GET /logout', function() {
+    try {
+        Flight::phpauth()->logout();
+
+        Flight::json(
+            array(
+                "error" => false,
+                "message" => "logged_out"
+            )
+        );
+    } catch (\Exception $e) {
+        Flight::json(
+            array(
+                "error" => true,
+                "message" => $e->getMessage()
+            )
+        );
+    }
+});
+
+Flight::route('GET /activate/@token', function($token) {
+    try {
+        Flight::phpauth()->activate(
+            $token
+        );
+
+        Flight::json(
+            array(
+                "error" => false,
+                "message" => "account_activated"
+            )
+        );
+    } catch (\Exception $e) {
+        Flight::json(
+            array(
+                "error" => true,
+                "message" => $e->getMessage()
+            )
+        );
+    }
+});
+
 Flight::start();
