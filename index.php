@@ -23,179 +23,163 @@ Flight::register(
 Flight::map('notFound', function() {
     Flight::json(
         array(
-            "error" => true,
             "message" => "not_found"
         ),
         404
     );
 });
 
-Flight::map('error', function(Exception $e) {
+Flight::map('error', function($e) {
     Flight::json(
         array(
-            "error" => true,
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "file" => $e->getFile() . ":" . $e->getLine()
         ),
-        500
+        400
     );
 });
 
-Flight::route('POST /login', function() {
-    try {
-        Flight::phpauth()->login(
-            Flight::request()->data->email,
-            Flight::request()->data->password
-        );
+Flight::route('GET /session', function() {
+    Flight::json(
+        Flight::phpauth()->getSessionInfo()
+    );
+});
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "logged_in"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
+Flight::route('GET /session/active', function() {
+    $currentSession = Flight::phpauth()->getCurrentSession();
+    $sessions = Flight::phpauth()->getActiveSessions();
+    $sessionsArray = array();
+
+    foreach($sessions as $session) {
+        $sessionArray = $session->toArray();
+
+        if($session->getUuid() == $currentSession->getUuid()) {
+            $sessionArray['isCurrentSession'] = true;
+        } else {
+            $sessionArray['isCurrentSession'] = false;
+        }
+
+        $sessionsArray[] = $sessionArray;
     }
+
+    Flight::json(array(
+        "sessions" => $sessionsArray
+    ));
+});
+
+Flight::route('DELETE /session/@sessionUuid', function($sessionUuid) {
+    Flight::phpauth()->deleteSession($sessionUuid);
+});
+
+Flight::route('GET /log', function() {
+    $logs = Flight::phpauth()->getLogs();
+
+    $logsArray = array();
+
+    foreach($logs as $log) {
+        $logsArray[] = $log->toArray();
+    }
+
+    Flight::json(array(
+        "logs" => $logsArray
+    ));
+});
+
+Flight::route('POST /login', function() {
+    if(strlen(Flight::request()->data->isPersistent) > 0) {
+        $isPersistent = true;
+    } else {
+        $isPersistent = false;
+    }
+
+    Flight::phpauth()->login(
+        Flight::request()->data->email,
+        Flight::request()->data->password,
+        $isPersistent
+    );
+
+    Flight::json(
+        array(
+            "message" => "logged_in"
+        )
+    );
 });
 
 Flight::route('POST /register', function() {
-    try {
-        Flight::phpauth()->register(
-            Flight::request()->data->email,
-            Flight::request()->data->password,
-            Flight::request()->data->repeatPassword
-        );
+    Flight::phpauth()->register(
+        Flight::request()->data->email,
+        Flight::request()->data->password,
+        Flight::request()->data->repeatPassword
+    );
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "registration_success"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "message" => "registration_success"
+        )
+    );
 });
 
 Flight::route('POST /change-password', function() {
-    try {
-        Flight::phpauth()->changePassword(
-            Flight::request()->data->password,
-            Flight::request()->data->newPassword,
-            Flight::request()->data->repeatNewPassword
-        );
+    Flight::phpauth()->changePassword(
+        Flight::request()->data->password,
+        Flight::request()->data->newPassword,
+        Flight::request()->data->repeatNewPassword
+    );
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "password_changed"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "message" => "password_changed"
+        )
+    );
 });
 
 Flight::route('POST /change-email', function() {
-    try {
-        Flight::phpauth()->changeEmail(
-            Flight::request()->data->password,
-            Flight::request()->data->newEmail
-        );
+    Flight::phpauth()->changeEmail(
+        Flight::request()->data->password,
+        Flight::request()->data->email
+    );
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "email_changed"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "error" => false,
+            "message" => "email_changed"
+        )
+    );
 });
 
 Flight::route('POST /delete', function() {
-    try {
-        Flight::phpauth()->delete(
-            Flight::request()->data->password
-        );
+    Flight::phpauth()->delete(
+        Flight::request()->data->password
+    );
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "account_deleted"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "error" => false,
+            "message" => "account_deleted"
+        )
+    );
 });
 
 Flight::route('GET /logout', function() {
-    try {
-        Flight::phpauth()->logout();
+    Flight::phpauth()->logout();
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "logged_out"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "message" => "logged_out"
+        )
+    );
 });
 
-Flight::route('GET /activate/@token', function($token) {
-    try {
-        Flight::phpauth()->activate(
-            $token
-        );
+Flight::route('POST /activate', function() {
+    Flight::phpauth()->activate(
+        Flight::request()->data->token
+    );
 
-        Flight::json(
-            array(
-                "error" => false,
-                "message" => "account_activated"
-            )
-        );
-    } catch (\Exception $e) {
-        Flight::json(
-            array(
-                "error" => true,
-                "message" => $e->getMessage()
-            )
-        );
-    }
+    Flight::json(
+        array(
+            "message" => "account_activated"
+        )
+    );
 });
 
 Flight::start();

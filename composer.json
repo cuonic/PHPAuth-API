@@ -1,6 +1,6 @@
 {
     "require": {
-        "cuonic/phpauth": "dev-master",
+        "liamjack/phpauth": "dev-master",
         "mikecao/flight": "^1.2"
     }
 }
